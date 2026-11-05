@@ -1,0 +1,51 @@
+groups:
+- name: infrastructure
+  rules:
+  - alert: InstanceDown
+    expr: up{job="node"} == 0
+    for: 30s
+    labels: {severity: critical}
+    annotations:
+      summary: "{{ $labels.host }} is unreachable"
+
+  - alert: WebsiteDown
+    expr: probe_success{job="blackbox_http"} == 0
+    for: 30s
+    labels: {severity: critical}
+    annotations:
+      summary: "Website {{ $labels.instance }} is not responding"
+
+  - alert: ServiceNotRunning
+    expr: node_systemd_unit_state{name=~"nginx.service|postgresql@16-main.service",state="active"} == 0
+    for: 20s
+    labels: {severity: critical}
+    annotations:
+      summary: "{{ $labels.name }} stopped on {{ $labels.instance }}"
+
+  - alert: HighCPU
+    expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100) > 80
+    for: 1m
+    labels: {severity: warning}
+    annotations:
+      summary: "CPU above 80% on {{ $labels.instance }}"
+
+  - alert: HighMemory
+    expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 70
+    for: 1m
+    labels: {severity: warning}
+    annotations:
+      summary: "Memory above 70% on {{ $labels.instance }}"
+
+  - alert: DiskSpaceLow
+    expr: (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes{fstype=~"ext4|xfs"}) * 100 < 20
+    for: 30s
+    labels: {severity: critical}
+    annotations:
+      summary: "Less than 20% disk free on {{ $labels.instance }}"
+
+  - alert: HighLatency
+    expr: probe_duration_seconds{job="blackbox_http"} > 1
+    for: 1m
+    labels: {severity: warning}
+    annotations:
+      summary: "Slow response from {{ $labels.instance }}"
